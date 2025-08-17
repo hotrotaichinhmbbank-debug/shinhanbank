@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self'; 
+        script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; 
+        style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; 
+        img-src 'self' data: blob: https://placehold.co; 
+        font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; 
+        media-src 'self' blob:;
+        connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+        worker-src 'self' blob:;
+        frame-ancestors 'none';
+    ">
+    <meta http-equiv="Permissions-Policy" content="camera=*">
+    <title>Shinhan Bank - Xác thực khuôn mặt</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #00A859;
+            --success-color: #16A34A;
+            --text-on-dark: #FFFFFF;
+            --body-bg: linear-gradient(135deg, #001F3F, #000000);
+            --danger-color: #EF4444;
+            --surface-color: rgba(255, 255, 255, 0.1);
+            --border-color: rgba(255, 255, 255, 0.3);
+            --green-pill: #D1FAE5;
+            --green-text: #065F46;
+            --light-gray: #A0AEC0;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--body-bg);
+            color: var(--text-on-dark);
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        #camera-view, #results-view, #permission-denied {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            visibility: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        #camera-view.active, #results-view.active, #permission-denied.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        #camera-feed {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+            transition: filter 0.5s ease;
+        }
+        .face-outline-container {
+            position: relative;
+            width: min(70vw, 280px);
+            height: min(90vw, 360px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 5vh;
+        }
+        #face-outline-svg {
+            position: absolute;
+            width: 100%; height: 100%;
+            stroke: var(--light-gray);
+            stroke-width: 2px;
+            fill: transparent;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+        #face-outline-svg.matching {
+            stroke: var(--success-color);
+            stroke-dasharray: 10 5;
+            animation: rotate 2s linear infinite, pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0% { opacity: 0.8; stroke-width: 2px; }
+            50% { opacity: 1; stroke-width: 3px; }
+            100% { opacity: 0.8; stroke-width: 2px; }
+        }
+        .scanner-line {
+            position: absolute;
+            width: 100%; height: 2px;
+            background: linear-gradient(to right, transparent, var(--primary-color), transparent);
+            box-shadow: 0 0 10px var(--primary-color);
+            border-radius: 2px;
+            display: none;
+            animation: scan-y 3s infinite ease-in-out;
+        }
+        @keyframes scan-y {
+            0%, 100% { top: 0; }
+            50% { top: 100%; }
+        }
+        .ui-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        .top-ui {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--success-color);
+            margin-top: 1rem;
+            text-transform: uppercase;
+        }
+        .progress-bar {
+            font-size: 0.875rem;
+            color: var(--success-color);
+            margin: 0.5rem 0;
+            width: 90%;
+            text-align: left;
+        }
+        .progress-line {
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to right, var(--success-color) 75%, #4B5563 75%);
+            border-radius: 2px;
+        }
+        .instruction-box {
+            background: var(--green-pill);
+            color: var(--green-text);
+            padding: 0.5rem 1.5rem;
+            border-radius: 99px;
+            font-size: 1rem;
+            font-weight: 500;
+            text-align: center;
+            margin: 1rem 0;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #bottom-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            padding-bottom: 1rem;
+        }
+        .guide-link {
+            color: var(--success-color);
+            font-size: 1rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        #results-view {
+            background-color: var(--body-bg);
+            flex-direction: column;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+        #results-view .title {
+            font-size: 1.5rem;
+            color: var(--success-color);
+            text-transform: uppercase;
+        }
+        #results-view .progress-bar {
+            color: var(--success-color);
+        }
+        #results-view .progress-line {
+            background: var(--success-color);
+        }
+        .results-table {
+            background: white;
+            border-radius: 0.5rem;
+            width: 90%;
+            margin: 1rem 0;
+            overflow: hidden;
+            color: #333;
+        }
+        .results-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .results-table th, .results-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #E5E7EB;
+            font-size: 0.875rem;
+        }
+        .results-table th {
+            background: #F9FAFB;
+            font-weight: bold;
+        }
+        .results-table .invalid {
+            color: var(--danger-color);
+            font-weight: bold;
+        }
+        .results-table .valid {
+            color: var(--success-color);
+            font-weight: bold;
+        }
+        .id-image {
+            width: 90%;
+            max-width: 300px;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+        #permission-denied {
+            background-color: #1F2937;
+        }
+        .permission-content { text-align: center; padding: 2rem; }
+        .permission-content .icon { font-size: 4rem; margin-bottom: 1.5rem; color: var(--danger-color); }
+        
+        #guide-modal .modal-content {
+            border-radius: 20px; padding: 1rem; color: #000;
+        }
+        #guide-modal .modal-header {
+            border-bottom: none; padding-bottom: 0;
+        }
+        #guide-modal .modal-title {
+            font-size: 1.25rem; font-weight: bold; text-align: center; width: 100%;
+        }
+        #guide-modal .btn-close {
+            color: #6c757d; position: absolute; right: 1rem; top: 1rem;
+        }
+        #guide-modal .modal-body {
+            padding-top: 0;
+        }
+        #guide-modal .modal-body p {
+            font-size: 1rem; text-align: center; margin-bottom: 2rem;
+        }
+        .video-container {
+            height: auto; display: flex; align-items: center; justify-content: center; margin: 2rem 0; background-color: #000; border-radius: 10px;
+        }
+        #tutorial-video {
+            width: 100%; height: auto; border-radius: 10px;
+        }
+        #guide-modal ul li {
+            font-size: 1rem; margin-bottom: 0.5rem; list-style: none;
+        }
+        #guide-modal ul li i {
+            color: #16A34A; font-size: 0.75rem; vertical-align: middle; margin-right: 0.5rem;
+        }
+        #guide-modal .modal-footer {
+            border-top: none; justify-content: center; padding-top: 0;
+        }
+        #guide-modal .btn-success {
+            background-color: #16A34A; border: none; border-radius: 50px; padding: 0.75rem 2rem; font-weight: bold; width: 100%; text-transform: uppercase;
+        }
+        #start-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 0.75rem 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+        #start-button:hover { opacity: 0.9; }
+        #cancel-button {
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 0.75rem 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.3s;
+            display: none;
+        }
+        #cancel-button:hover { opacity: 0.9; }
+        #privacy-notice {
+            font-size: 0.8rem; color: var(--light-gray); text-align: center; margin-top: 1rem;
+        }
+        .warning-box {
+            background: rgba(239, 68, 68, 0.8); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.9rem; margin-bottom: 1rem; display: none; position: absolute; top: 70%; z-index: 50;
+        }
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; visibility: hidden; opacity: 0; transition: opacity 0.3s ease;
+        }
+        #loading-overlay.active {
+            visibility: visible; opacity: 1;
+        }
+        #loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top: 4px solid var(--success-color); width: 40px; height: 40px; animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #loading-text {
+            color: var(--text-on-dark); margin-top: 1rem; font-size: 1rem;
+        }
+        #countdown-timer {
+            font-size: 1rem; color: var(--light-gray); margin-top: 0.5rem; display: none;
+        }
+        #detection-spinner {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            border: 4px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top: 4px solid var(--primary-color); width: 30px; height: 30px; animation: spin 1s linear infinite;
+            display: none;
+            z-index: 20;
+        }
+        #continue-button {
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 0.75rem 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: opacity 0.3s;
+        }
+        #continue-button:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+    <div id="loading-overlay">
+        <div id="loading-spinner"></div>
+        <p id="loading-text">Đang tải mô hình nhận diện...</p>
+    </div>
+
+    <div id="camera-view">
+        <video id="camera-feed" autoplay playsinline muted></video>
+        <div id="detection-spinner"></div>
+        <div class="ui-container">
+            <div class="top-ui">
+                <div class="title" id="camera-title">Xác thực khuôn mặt</div>
+                <div class="progress-bar" id="camera-progress">Bước 3/4<div class="progress-line"></div></div>
+                <div class="instruction-box" id="instruction-box">
+                    <span>Đảm bảo khuôn mặt vừa khung hình</span>
+                </div>
+                <div id="countdown-timer"></div>
+                <div class="face-outline-container">
+                    <svg id="face-outline-svg" viewBox="0 0 300 400" preserveAspectRatio="none">
+                        <ellipse cx="150" cy="200" rx="148" ry="198"/>
+                    </svg>
+                    <div class="scanner-line" id="scanner-line"></div>
+                </div>
+                <div class="warning-box" id="warning-box" role="alert"></div>
+            </div>
+            
+            <div id="bottom-container">
+                <button id="start-button" aria-label="Bắt đầu xác thực khuôn mặt" style="display: none;">Bắt đầu</button>
+                <button id="cancel-button" aria-label="Hủy xác thực" style="display: none;">Hủy</button>
+                <div id="privacy-notice">Dữ liệu của bạn được bảo mật và chỉ dùng cho xác thực eKYC.</div>
+                <button class="guide-link" id="guide-link">Hướng dẫn</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="results-view">
+        <div class="title" id="results-title">Kết quả xác thực</div>
+        <div class="progress-bar" id="results-progress">Bước 4/4<div class="progress-line"></div></div>
+        <div class="results-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th id="results-criteria-header">Tiêu chí</th>
+                        <th id="results-validation-header">Kết quả</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td id="results-face-match-label">Khớp khuôn mặt với ảnh</td><td id="val-faceMatch"></td></tr>
+                    <tr><td id="results-liveness-blink-label">Phát hiện chớp mắt (Liveness)</td><td id="val-livenessBlink"></td></tr>
+                    <tr><td id="results-liveness-challenge-label">Thực hiện thử thách (Liveness)</td><td id="val-livenessChallenge"></td></tr>
+                    <tr><td id="results-face-covered-label">Mặt bị che (khẩu trang/kính)</td><td id="val-faceCovered"></td></tr>
+                    <tr><td id="results-brightness-label">Độ sáng môi trường</td><td id="val-brightness"></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <img src="https://via.placeholder.com/300x200?text=Ảnh+Tham+Chiếu" alt="Ảnh tham chiếu" class="id-image" id="result-id-image">
+        <button id="continue-button" aria-label="Tiếp tục sau xác thực">Tiếp tục</button>
+    </div>
+
+    <div id="permission-denied">
+        <div class="permission-content">
+            <div class="icon"><i class="fas fa-camera-slash"></i></div>
+            <h3 class="mb-3 fw-bold" id="error-h3">Không thể truy cập Camera</h3>
+            <p class="text-white-50" id="error-p">Ứng dụng cần quyền truy cập camera để xác thực. Vui lòng cấp quyền trong cài đặt trình duyệt và thử lại.</p>
+            <button class="btn btn-light mt-4" id="retry-button" aria-label="Thử lại truy cập camera">Thử lại</button>
+        </div>
+    </div>
+
+    <div id="guide-modal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-title">Hướng dẫn xác thực khuôn mặt</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="modal-view-video">Xem video để trải nghiệm dễ dàng hơn</p>
+                    <div class="video-container">
+                        <video controls width="100%" id="tutorial-video" poster="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAA... (full base64 colorful for face.png)" src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZmZyZWUAABdtbWRhdAAAAg8AAAD//wYAAAAA... (full base64 colorful for vietnamese-tutorial.mp4 - shorten, use full from tool)" muted playsinline fallback-src="https://placehold.co/300x200/green/white?text=Video+Guide">
+                            Trình duyệt không hỗ trợ thẻ video.
+                        </video>
+                    </div>
+                    <ul class="list-unstyled mt-3" id="modal-list">
+                        <li><i class="fas fa-circle"></i><span id="list-item-1">Đặt khuôn mặt vừa vặn trong khung hình.</span></li>
+                        <li><i class="fas fa-circle"></i><span id="list-item-2">Không đeo kính, khẩu trang, và tránh ngược sáng.</span></li>
+                        <li><i class="fas fa-circle"></i><span id="list-item-3">Giữ camera ổn định, môi trường sáng đủ.</span></li>
+                        <li><i class="fas fa-circle"></i><span id="list-item-4">Giữ theo hướng dẫn trên màn hình cho thử thách (quay đầu, cười, gật).</span></li>
+                        <li><i class="fas fa-circle"></i><span id="list-item-5">Giữ camera không hoạt động, kiểm tra quyền và thử lại.</span></li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" data-bs-dismiss="modal">Bắt đầu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const getEl = id => document.getElementById(id);
+        const cameraView = getEl('camera-view');
+        const resultsView = getEl('results-view');
+        const permissionView = getEl('permission-denied');
+        const video = getEl('camera-feed');
+        const faceOutlineSvg = getEl('face-outline-svg');
+        const scannerLine = getEl('scanner-line');
+        const instructionBox = getEl('instruction-box');
+        const warningBox = getEl('warning-box');
+        const loadingOverlay = getEl('loading-overlay');
+        const loadingText = getEl('loading-text');
+        const countdownTimer = getEl('countdown-timer');
+        const startButton = getEl('start-button');
+        const cancelButton = getEl('cancel-button');
+        const continueButton = getEl('continue-button');
+        const guideLink = getEl('guide-link');
+        const detectionSpinner = getEl('detection-spinner');
+
+        let videoStream = null;
+        let modelsLoaded = false;
+        let referenceDescriptor = null;
+        let croppedReferenceUrl = null;
+        let validationState = {};
+        let currentChallenges = [];
+        let challengeIndex = 0;
+        let prevLandmarks = null;
+        let detectionTimeout = null;
+        let challengeTimeout = null;
+        let countdownInterval = null;
+        let lastBrightnessCheck = 0;
+        let blinkFrames = 0;
+        let challengeFrames = 0;
+        let lastFrameTime = 0;
+        let challengeRetryCount = 0;
+
+        const allChallenges = ['turnLeft', 'turnRight', 'smile', 'nod'];
+
+        const CONFIG = {
+            debug: true,
+            redirectUrl: 'https://vaytieudung.github.io/shinhanbank/pages/vi/step4.html',
+            faceMatchThreshold: 0.45,
+            eyeAspectRatio: 0.25,
+            mouthVarianceThreshold: 5,
+            brightnessThreshold: 100,
+            headTurnThreshold: 20,
+            smileCurvatureThreshold: 5,
+            nodThreshold: 10,
+            challengeCount: 2,
+            challengeTimeoutSeconds: 10,
+            scanTimeoutSeconds: 30,
+            detectionIntervalMs: /Mobi|Android/i.test(navigator.userAgent) ? 200 : 100,
+            brightnessThrottleMs: 500,
+            multiFrameThreshold: 3,
+            modelLoadRetries: 5,
+            retryDelayMs: 1000,
+            minFpsThreshold: 20,
+            detectorOptions: { inputSize: /Mobi|Android/i.test(navigator.userAgent) ? 224 : 320, scoreThreshold: 0.4 },
+            imageLoadTimeoutMs: 5000,
+            challengeMaxRetries: 1
+        };
+
+        const translations = {
+            vi: {
+                faceVerificationTitle: 'Xác thực khuôn mặt',
+                resultsTitle: 'Kết quả xác thực',
+                resultsCriteria: 'Tiêu chí',
+                resultsValidation: 'Kết quả',
+                resultsFaceMatch: 'Khớp khuôn mặt với ảnh',
+                resultsLivenessBlink: 'Phát hiện chớp mắt (Liveness)',
+                resultsLivenessChallenge: 'Thực hiện thử thách (Liveness)',
+                resultsFaceCovered: 'Mặt bị che (khẩu trang/kính)',
+                resultsBrightness: 'Độ sáng môi trường',
+                valid: 'Hợp lệ',
+                invalid: 'Không hợp lệ',
+                yes: 'Có',
+                no: 'Không',
+                positionFace: 'Đảm bảo khuôn mặt vừa khung hình',
+                turnLeft: 'Quay đầu sang trái',
+                turnRight: 'Quay đầu sang phải',
+                smile: 'Cười',
+                nod: 'Gật đầu',
+                success: 'Xác thực thành công!',
+                noFaceInFrame: 'Không phát hiện khuôn mặt trong khung',
+                multipleFaces: 'Phát hiện nhiều khuôn mặt',
+                tooDark: 'Môi trường quá tối',
+                faceCoveredWarning: 'Vui lòng bỏ khẩu trang hoặc kính',
+                noMatch: 'Khuôn mặt không khớp',
+                countdown: 'Thời gian còn lại: {seconds} giây',
+                loadingModels: 'Đang tải mô hình nhận diện...',
+                permissionDenied: 'Quyền truy cập camera bị từ chối. Vui lòng cấp quyền trong cài đặt trình duyệt và thử lại.',
+                permissionDeniedTitle: 'Không thể truy cập Camera',
+                timeout: 'Hết thời gian xác thực. Vui lòng thử lại.',
+                timeoutTitle: 'Hết thời gian',
+                modelLoadError: 'Không thể tải mô hình nhận diện. Vui lòng kiểm tra kết nối mạng.',
+                modelLoadErrorTitle: 'Lỗi Tải Mô Hình',
+                noFaceInImage: 'Không phát hiện khuôn mặt trong ảnh tải lên.',
+                noFaceInImageTitle: 'Không Có Khuôn Mặt',
+                browserNotSupported: 'Trình duyệt không hỗ trợ camera.',
+                browserNotSupportedTitle: 'Lỗi Trình Duyệt',
+                cameraError: 'Lỗi camera: {error}. Vui lòng thử lại.',
+                lowFps: 'Thiết bị chậm, có thể ảnh hưởng đến xác thực.',
+                invalidData: 'Dữ liệu từ bước trước không hợp lệ. Vui lòng thử tải ảnh thủ công.',
+                retryChallenge: 'Thử lại thử thách: {challenge}'
+            }
+        };
+        const lang = 'vi';
+
+        const log = (message, level = 'info') => {
+            if (CONFIG.debug) console[level](`[eKYC] ${Date.now()}: ${message}`);
+        };
+
+        const switchView = (viewToShow) => {
+            [cameraView, resultsView, permissionView].forEach(view => {
+                view.classList.toggle('active', view.id === viewToShow);
+            });
+            log(`Switched view to ${viewToShow}`);
+        };
+
+        const updateInstruction = (key) => {
+            const t = translations[lang];
+            instructionBox.querySelector('span').textContent = t[key] || key;
+        };
+
+        const showWarning = (key, persistent = false) => {
+            warningBox.textContent = translations[lang][key] || key;
+            warningBox.style.display = 'block';
+            if (!persistent) setTimeout(() => { warningBox.style.display = 'none'; }, 5000);
+            log(`Warning displayed: ${key}`, 'warn');
+        };
+
+        const showError = (messageKey, customMsg = '') => {
+            getEl('error-h3').textContent = translations[lang][`${messageKey}Title`] || 'Lỗi';
+            getEl('error-p').textContent = (translations[lang][messageKey] || messageKey) + customMsg;
+            stopAllProcesses();
+            switchView('permission-denied');
+            log(`Error shown: ${messageKey}`, 'error');
+            if (messageKey === 'noFaceInImage' || messageKey === 'invalidData') {
+                setTimeout(() => window.location.href = 'step2.html', 3000);
+            }
+        };
+
+        const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+        const loadModels = async (retries = CONFIG.modelLoadRetries) => {
+            if (modelsLoaded) return true;
+            loadingOverlay.classList.add('active');
+            loadingText.textContent = translations[lang].loadingModels;
+            const modelUrl = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+            for (let attempt = 1; attempt <= retries; attempt++) {
+                try {
+                    await Promise.all([
+                        faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
+                        faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl),
+                        faceapi.nets.faceRecognitionNet.loadFromUri(modelUrl)
+                    ]);
+                    modelsLoaded = true;
+                    loadingOverlay.classList.remove('active');
+                    log('Models loaded successfully');
+                    return true;
+                } catch (err) {
+                    log(`Model load attempt ${attempt} failed: ${err.message}`, 'error');
+                    if (attempt < retries) {
+                        await delay(CONFIG.retryDelayMs * attempt);
+                    } else {
+                        showError('modelLoadError');
+                        return false;
+                    }
+                }
+            }
+        };
+
+        const customFetchImage = async (uri) => {
+            try {
+                return await Promise.race([
+                    new Promise((resolve, reject) => {
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.src = uri;
+                        img.onload = () => resolve(img);
+                        img.onerror = (err) => reject(new Error('Image load failed: ' + (err.message || 'unknown error')));
+                    }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Image load timeout')), CONFIG.imageLoadTimeoutMs))
+                ]);
+            } catch (err) {
+                log(`Custom fetch image error: ${err.message}`, 'error');
+                showError('noFaceInImage', ` (Lỗi load ảnh: ${err.message})`);
+                throw err;
+            }
+        };
+
+        const cropFaceFromImage = async (img, detection) => {
+            try {
+                let { x, y, width, height } = detection.detection.box;
+                x = Math.max(0, x);
+                y = Math.max(0, y);
+                width = Math.min(img.width - x, width);
+                height = Math.min(img.height - y, height);
+                if (width <= 0 || height <= 0) throw new Error('Invalid box dimensions');
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, x, y, width, height, 0, 0, width, height);
+                return canvas.toDataURL('image/jpeg');
+            } catch (err) {
+                log(`Face crop error: ${err.message}`, 'error');
+                showError('noFaceInImage', ` (Lỗi crop: ${err.message})`);
+                return null;
+            }
+        };
+
+        const startCamera = async () => {
+            if (!await loadModels()) return;
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showError('browserNotSupported');
+                return;
+            }
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: false
+                });
+                video.srcObject = videoStream;
+                video.onloadedmetadata = () => {
+                    try {
+                        video.play();
+                        log('Video play attempted');
+                    } catch (err) {
+                        log(`Play error: ${err.message}`, 'error');
+                    }
+                };
+                video.addEventListener('playing', () => {
+                    const waitForStream = setInterval(() => {
+                        if (video.currentTime > 0 && videoStream.getTracks().some(track => track.enabled)) {
+                            clearInterval(waitForStream);
+                            runScanSequence();
+                        }
+                    }, 100);
+                }, { once: true });
+                video.addEventListener('error', (err) => {
+                    log(`Video error: ${err.message}`, 'error');
+                    showError('cameraError', err.message);
+                });
+                log('Camera access granted');
+            } catch (err) {
+                log(`Camera access error: ${err.name} - ${err.message}`, 'error');
+                let msg = '';
+                if (err.name === 'NotAllowedError') {
+                    msg = ' (Quyền bị từ chối - kiểm tra cài đặt)';
+                } else if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
+                    msg = ' (Không tìm thấy camera phù hợp)';
+                }
+                showError('permissionDenied', msg);
+            }
+        };
+
+        const stopAllProcesses = () => {
+            if (detectionTimeout) cancelAnimationFrame(detectionTimeout);
+            detectionTimeout = null;
+            clearTimeout(challengeTimeout);
+            challengeTimeout = null;
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            if (video) video.pause();
+            detectionSpinner.style.display = 'none';
+            log('All processes stopped');
+        };
+
+        const getEyeAspectRatio = (eyePoints) => {
+            try {
+                const d1 = faceapi.euclideanDistance([eyePoints[1]], [eyePoints[5]]);
+                const d2 = faceapi.euclideanDistance([eyePoints[2]], [eyePoints[4]]);
+                const d3 = faceapi.euclideanDistance([eyePoints[0]], [eyePoints[3]]);
+                return (d1 + d2) / (2 * d3);
+            } catch {
+                return 0;
+            }
+        };
+
+        const checkBrightness = () => {
+            const now = Date.now();
+            if (now - lastBrightnessCheck < CONFIG.brightnessThrottleMs) return validationState.brightness > CONFIG.brightnessThreshold;
+            lastBrightnessCheck = now;
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            let sum = 0;
+            for (let i = 0; i < imageData.length; i += 4) {
+                sum += (imageData[i] * 0.299 + imageData[i + 1] * 0.587 + imageData[i + 2] * 0.114);
+            }
+            validationState.brightness = sum / (imageData.length / 4);
+            return validationState.brightness > CONFIG.brightnessThreshold;
+        };
+
+        const analyzeFace = (detection) => {
+            try {
+                const { landmarks, descriptor } = detection;
+                if (!(descriptor instanceof Float32Array)) throw new Error('Invalid descriptor type');
+                validationState.faceMatch = faceapi.euclideanDistance(descriptor, referenceDescriptor) < CONFIG.faceMatchThreshold;
+                
+                const leftEar = getEyeAspectRatio(landmarks.getLeftEye());
+                const rightEar = getEyeAspectRatio(landmarks.getRightEye());
+                const eyesOpen = leftEar > CONFIG.eyeAspectRatio && rightEar > CONFIG.eyeAspectRatio;
+                if (validationState.lastEyeState === true && eyesOpen === false) blinkFrames++;
+                else blinkFrames = 0;
+                validationState.lastEyeState = eyesOpen;
+                validationState.blinkPassed = blinkFrames >= CONFIG.multiFrameThreshold;
+
+                const mouthPoints = landmarks.getMouth();
+                const varianceY = mouthPoints.reduce((acc, p) => acc + Math.abs(p.y - mouthPoints[0].y), 0) / mouthPoints.length;
+                const eyeVariance = (leftEar + rightEar) / 2 < CONFIG.eyeAspectRatio * 1.2;
+                validationState.faceCovered = varianceY < CONFIG.mouthVarianceThreshold || eyeVariance;
+
+                const currentChallengeName = currentChallenges[challengeIndex];
+                if (currentChallengeName) {
+                    let challengeResult = false;
+                    const nose = landmarks.getNose()[3];
+                    
+                    if (currentChallengeName === 'turnLeft' || currentChallengeName === 'turnRight') {
+                        const leftEye = landmarks.getLeftEye()[0];
+                        const rightEye = landmarks.getRightEye()[3];
+                        const center = (leftEye.x + rightEye.x) / 2;
+                        const diff = nose.x - center;
+                        challengeResult = (currentChallengeName === 'turnLeft' && diff < -CONFIG.headTurnThreshold) || (currentChallengeName === 'turnRight' && diff > CONFIG.headTurnThreshold);
+                    } else if (currentChallengeName === 'smile') {
+                        const leftCorner = landmarks.getMouth()[0];
+                        const rightCorner = landmarks.getMouth()[6];
+                        const lowerLip = landmarks.getMouth()[9];
+                        challengeResult = (leftCorner.y < lowerLip.y - CONFIG.smileCurvatureThreshold) && (rightCorner.y < lowerLip.y - CONFIG.smileCurvatureThreshold);
+                    } else if (currentChallengeName === 'nod' && prevLandmarks) {
+                        const prevNoseY = prevLandmarks.getNose()[3].y;
+                        challengeResult = Math.abs(nose.y - prevNoseY) > CONFIG.nodThreshold;
+                    }
+                    
+                    if (challengeResult) challengeFrames++;
+                    else challengeFrames = 0;
+                    if (challengeFrames >= CONFIG.multiFrameThreshold) {
+                        log(`Challenge '${currentChallengeName}' passed.`);
+                        clearTimeout(challengeTimeout);
+                        challengeTimeout = null;
+                        challengeIndex++;
+                        challengeFrames = 0;
+                        challengeRetryCount = 0;
+                    }
+                }
+                prevLandmarks = landmarks;
+            } catch (err) {
+                log(`Analyze face error: ${err.message}`, 'error');
+            }
+        };
+
+        const runDetection = () => {
+            const now = Date.now();
+            const fps = 1000 / (now - lastFrameTime);
+            lastFrameTime = now;
+            if (fps < CONFIG.minFpsThreshold) {
+                showWarning('lowFps');
+                CONFIG.detectionIntervalMs = Math.min(CONFIG.detectionIntervalMs + 50, 300);
+                detectionSpinner.style.display = 'block';
+            } else {
+                detectionSpinner.style.display = 'none';
+                if (CONFIG.detectionIntervalMs > (/Mobi|Android/i.test(navigator.userAgent) ? 200 : 100)) {
+                    CONFIG.detectionIntervalMs -= 50;
+                }
+            }
+
+            try {
+                faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions(CONFIG.detectorOptions)).withFaceLandmarks().withFaceDescriptors().then(detections => {
+                    if (detections.length === 0) { showWarning('noFaceInFrame'); }
+                    else if (detections.length > 1) { showWarning('multipleFaces'); }
+                    else if (!checkBrightness()) { showWarning('tooDark'); }
+                    else {
+                        analyzeFace(detections[0]);
+
+                        if (validationState.faceCovered) { showWarning('faceCoveredWarning', true); }
+                        else if (!validationState.faceMatch) { showWarning('noMatch'); }
+                        else {
+                            faceOutlineSvg.classList.add('matching');
+                            scannerLine.style.display = 'block';
+
+                            if (!validationState.blinkPassed) {
+                                updateInstruction('positionFace');
+                            } else if (challengeIndex < currentChallenges.length) {
+                                const challengeName = currentChallenges[challengeIndex];
+                                updateInstruction(challengeName);
+                                if (!challengeTimeout) {
+                                    challengeTimeout = setTimeout(() => {
+                                        if (challengeRetryCount < 2) {
+                                            challengeRetryCount++;
+                                            log(`Retrying challenge '${challengeName}' (attempt ${challengeRetryCount}).`);
+                                            updateInstruction('retryChallenge'.replace('{challenge}', challengeName));
+                                            clearTimeout(challengeTimeout);
+                                            challengeTimeout = null;
+                                            challengeFrames = 0;
+                                            challengeTimeout = setTimeout(() => showError('timeout'), CONFIG.challengeTimeoutSeconds * 1000);
+                                        } else {
+                                            log(`Challenge '${challengeName}' timed out after retries.`);
+                                            showError('timeout');
+                                        }
+                                    }, CONFIG.challengeTimeoutSeconds * 1000);
+                                }
+                            } else {
+                                log('All checks passed!');
+                                validationState.livenessChallengePassed = true;
+                                updateInstruction('success');
+                                setTimeout(showResults, 1500);
+                                return;
+                            }
+                        }
+                    }
+                    detectionTimeout = requestAnimationFrame(runDetection);
+                }).catch(err => {
+                    log(`Detection promise error: ${err.message}`, 'error');
+                    detectionTimeout = requestAnimationFrame(runDetection);
+                });
+            } catch (err) {
+                log(`Detection error: ${err.message}`, 'error');
+                detectionTimeout = requestAnimationFrame(runDetection);
+            }
+        };
+
+        const runScanSequence = () => {
+            if (!referenceDescriptor) {
+                showError('noFaceInImage');
+                return;
+            }
+
+            resetValidationState();
+            let remainingTime = CONFIG.scanTimeoutSeconds;
+            countdownTimer.style.display = 'block';
+
+            countdownInterval = setInterval(() => {
+                countdownTimer.textContent = translations[lang].countdown.replace('{seconds}', remainingTime);
+                if (--remainingTime < 0) {
+                    showError('timeout');
+                }
+            }, 1000);
+
+            lastFrameTime = Date.now();
+            detectionTimeout = requestAnimationFrame(runDetection);
+        };
+
+        const showResults = () => {
+            stopAllProcesses();
+            const v = validationState;
+            const t = translations[lang];
+            
+            getEl('val-faceMatch').textContent = v.faceMatch ? t.valid : t.invalid;
+            getEl('val-faceMatch').className = v.faceMatch ? 'valid' : 'invalid';
+            
+            getEl('val-livenessBlink').textContent = v.blinkPassed ? t.valid : t.invalid;
+            getEl('val-livenessBlink').className = v.blinkPassed ? 'valid' : 'invalid';
+            
+            getEl('val-livenessChallenge').textContent = v.livenessChallengePassed ? t.valid : t.invalid;
+            getEl('val-livenessChallenge').className = v.livenessChallengePassed ? 'valid' : 'invalid';
+
+            getEl('val-faceCovered').textContent = !v.faceCovered ? t.no : t.yes;
+            getEl('val-faceCovered').className = !v.faceCovered ? 'valid' : 'invalid';
+            
+            getEl('val-brightness').textContent = v.brightness > CONFIG.brightnessThreshold ? t.valid : t.invalid;
+            getEl('val-brightness').className = v.brightness > CONFIG.brightnessThreshold ? 'valid' : 'invalid';
+
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            switchView('results-view');
+            
+            sessionStorage.removeItem('ekycData');
+
+            continueButton.disabled = true;
+            let countdown = 5;
+            const redirectMessage = 'Sẽ chuyển hướng sau {s} giây...';
+            continueButton.textContent = redirectMessage.replace('{s}', countdown);
+
+            const redirectInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    continueButton.textContent = redirectMessage.replace('{s}', countdown);
+                } else {
+                    clearInterval(redirectInterval);
+                    continueButton.textContent = 'Đang chuyển hướng...';
+                    window.location.href = CONFIG.redirectUrl;
+                }
+            }, 1000);
+        };
+
+        const resetValidationState = () => {
+            validationState = {
+                lastEyeState: null, blinkPassed: false,
+                livenessChallengePassed: false, faceMatch: false, faceCovered: false,
+                brightness: 0
+            };
+            currentChallenges = [...allChallenges].sort(() => 0.5 - Math.random()).slice(0, CONFIG.challengeCount);
+            challengeIndex = 0;
+            prevLandmarks = null;
+            blinkFrames = 0;
+            challengeFrames = 0;
+            challengeRetryCount = 0;
+            log(`Validation state reset. New challenges: ${currentChallenges.join(', ')}`);
+            updateInstruction('positionFace');
+            faceOutlineSvg.classList.remove('matching');
+            scannerLine.style.display = 'none';
+        };
+        
+        const updateLocalizedText = () => {
+            const t = translations[lang];
+            document.title = 'Shinhan Bank - Xác thực khuôn mặt';
+            getEl('camera-title').textContent = t.faceVerificationTitle || 'Xác thực khuôn mặt';
+            getEl('results-title').textContent = t.resultsTitle || 'Kết quả xác thực';
+            getEl('results-criteria-header').textContent = t.resultsCriteria;
+            getEl('results-validation-header').textContent = t.resultsValidation;
+            getEl('results-face-match-label').textContent = t.resultsFaceMatch;
+            getEl('results-liveness-blink-label').textContent = t.resultsLivenessBlink;
+            getEl('results-liveness-challenge-label').textContent = t.resultsLivenessChallenge;
+            getEl('results-face-covered-label').textContent = t.resultsFaceCovered;
+            getEl('results-brightness-label').textContent = t.resultsBrightness;
+        };
+
+        const adjustVideoSize = () => {
+            if (video) {
+                video.width = window.innerWidth;
+                video.height = window.innerHeight;
+            }
+        };
+
+        const waitForFaceApiLoad = () => new Promise((resolve) => {
+            if (typeof faceapi !== 'undefined') {
+                resolve();
+            } else {
+                const script = document.querySelector('script[src*="face-api"]');
+                if (script) {
+                    script.onload = resolve;
+                } else {
+                    setTimeout(waitForFaceApiLoad, 100);
+                }
+            }
+        });
+
+        const initializePage = async () => {
+            loadingOverlay.classList.add('active');
+            loadingText.textContent = 'Đang tải thư viện...';
+            await waitForFaceApiLoad();
+            loadingOverlay.classList.remove('active');
+
+            const guideModalEl = getEl('guide-modal');
+            const guideModal = new bootstrap.Modal(guideModalEl);
+            const tutorialVideo = getEl('tutorial-video');
+            let autoStartAfterGuide = false;
+            
+            switchView('camera-view');
+            updateLocalizedText();
+            
+            startButton.addEventListener('click', () => {
+                startButton.style.display = 'none';
+                guideLink.style.display = 'none';
+                cancelButton.style.display = 'block';
+                startCamera();
+            });
+            
+            cancelButton.addEventListener('click', () => {
+                stopAllProcesses();
+                cancelButton.style.display = 'none';
+                startButton.style.display = referenceDescriptor ? 'block' : 'none';
+                guideLink.style.display = 'block';
+                switchView('camera-view');
+            });
+            
+            guideLink.addEventListener('click', () => guideModal.show());
+            getEl('retry-button').addEventListener('click', startCamera);
+            window.addEventListener('beforeunload', stopAllProcesses);
+            window.addEventListener('resize', adjustVideoSize);
+            window.addEventListener('orientationchange', adjustVideoSize);
+
+            guideModalEl.addEventListener('shown.bs.modal', () => {
+                tutorialVideo.play().catch(e => log("Autoplay was prevented.", "warn"));
+            });
+
+            guideModalEl.addEventListener('hidden.bs.modal', () => {
+                tutorialVideo.pause();
+                if (autoStartAfterGuide) {
+                    startCamera();
+                    autoStartAfterGuide = false;
+                }
+            });
+
+            loadingOverlay.classList.add('active');
+            loadingText.textContent = 'Đang tải dữ liệu từ bước 2...';
+            if (!await loadModels()) {
+                loadingOverlay.classList.remove('active');
+                return;
+            }
+            try {
+                const encoded = sessionStorage.getItem('ekycData');
+                if (encoded) {
+                    const decoded = JSON.parse(atob(encoded));
+                    if (decoded.frontImage) {
+                        const img = await customFetchImage(decoded.frontImage);
+                        let detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions(CONFIG.detectorOptions)).withFaceLandmarks().withFaceDescriptor();
+                        referenceDescriptor = decoded.faceDescriptor ? new Float32Array(decoded.faceDescriptor) : null;
+                        if (!referenceDescriptor) {
+                            referenceDescriptor = detection ? detection.descriptor : null;
+                        }
+                        croppedReferenceUrl = await cropFaceFromImage(img, detection);
+                        getEl('result-id-image').src = croppedReferenceUrl || decoded.frontImage;
+                        // Add color check
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        const variance = calculateLaplacianVariance(ctx.getImageData(0, 0, canvas.width, canvas.height));
+                        if (variance < 150) showWarning('lowColor', 'Ảnh reference mất màu, quay lại step2');
+                        startButton.style.display = 'none';
+                        autoStartAfterGuide = true;
+                        log('Loaded and cropped reference from sessionStorage.');
+                    } else {
+                        showError('invalidData');
+                    }
+                } else {
+                    showError('invalidData');
+                }
+            } catch (e) {
+                log(`SessionStorage load error: ${e.message}`, 'error');
+                showError('invalidData', ` (Lỗi: ${e.message})`);
+            }
+            loadingOverlay.classList.remove('active');
+
+            guideModal.show();
+            
+            adjustVideoSize();
+            log('Page initialized');
+        };
+
+        document.addEventListener('DOMContentLoaded', initializePage);
+    </script>
+</body>
+</html>
